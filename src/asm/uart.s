@@ -28,47 +28,87 @@ Note that this is not an exhaustive list, and different versions of GCC may supp
 	.thumb_func
     .type	USART_Config_Request, %function
 USART_Config_Request:
-	push {lr}
-	ldr		r1, =LPC_IOCON_BASE
-	ldr		r2, =IOCON_OFFSET_PIO1_6
-	ldr 	r3, [r1, r2]
-	movs	r4, #IOCON_FUNC1
-	orrs 	r3, r3, r4
-	str		r3, [r1, r2]
-
-	ldr		r2, =IOCON_OFFSET_PIO1_7
-	ldr 	r3, [r1, r2]
-	movs	r4, #IOCON_FUNC1
-	orrs 	r3, r3, r4
-	str		r3, [r1, r2]
-
-	ldr		r1, =LPC_SYSCTL_BASE
-	ldr		r2, =SYSCTL_OFFSET_SYSAHBCLKCTRL
-	ldr 	r3, [r1, r2]
-	ldr		r4, =(1 << 12)
-	orrs 	r3, r3, r4
-	str		r3, [r1, r2]
-
-    movs r2, #0x01
-    ldr r3, =SYSCTL_OFFSET_USARTCLKDIV
-    str r2, [r1, r3]
-
-    mov r0, r0
-    bl baudrate_config_request
-
-    ldr r1, =LPC_USART_BASE
-    ldr r2, [r1, #USART_OFFSET_LCR]
-    ldr r3, =~(1 << 7)
-    ands r2, r2, r3
-    str r2, [r1, #USART_OFFSET_LCR]
-
-    movs r2, #0x03
-    str r2, [r1, #USART_OFFSET_LCR]
-
-    movs r2, #0x07
-    str r2, [r1, #USART_OFFSET_FCR]
-
-    pop {pc}
+	push	{r7, lr}
+	sub	sp, sp, #16
+	add	r7, sp, #0
+	str	r0, [r7, #4]		//baudrate
+	ldr	r2, =LPC_IOCON_BASE
+	movs	r3, #IOCON_OFFSET_PIO1_6
+	ldr	r3, [r2, r3]
+	ldr	r1, =LPC_IOCON_BASE
+	movs	r2, #IOCON_FUNC1
+	orrs	r3, r2
+	movs	r2, #IOCON_OFFSET_PIO1_6
+	str	r3, [r1, r2]
+	ldr	r2, =LPC_IOCON_BASE
+	movs	r3, #IOCON_OFFSET_PIO1_7
+	ldr	r3, [r2, r3]
+	ldr	r1, =LPC_IOCON_BASE
+	movs	r2, #IOCON_FUNC1
+	orrs	r3, r2
+	movs	r2, #IOCON_OFFSET_PIO1_7
+	str	r3, [r1, r2]
+	ldr	r2, =LPC_SYSCTL_BASE
+	movs	r3, #SYSCTL_OFFSET_SYSAHBCLKCTRL
+	ldr	r3, [r2, r3]
+	ldr	r1, =LPC_SYSCTL_BASE
+	movs	r2, #SYSCTL_OFFSET_SYSAHBCLKCTRL
+	lsls	r2, r2, #5
+	orrs	r3, r2
+	movs	r2, #SYSCTL_OFFSET_SYSAHBCLKCTRL
+	str	r3, [r1, r2]
+	ldr	r2, =LPC_SYSCTL_BASE
+	movs	r3, #SYSCTL_OFFSET_USARTCLKDIV
+	movs	r1, #1
+	str	r1, [r2, r3]
+	ldr	r3, =LPC_SYSCTL_BASE
+	ldr	r2, [r3, #SYSCTL_OFFSET_SYSAHBCLKDIV]
+	ldr	r3, =SystemCoreClock
+	ldr	r3, [r3]
+	muls	r3, r2
+	movs	r0, r3
+	ldr	r2, =LPC_SYSCTL_BASE
+	movs	r3, #SYSCTL_OFFSET_USARTCLKDIV
+	ldr	r3, [r2, r3]
+	ldr	r2, [r7, #4]	//baudrate
+	muls	r3, r2
+	lsls	r3, r3, #4
+	movs	r1, r3
+	bl	__aeabi_uidiv
+	movs	r3, r0
+	str	r3, [r7, #12]
+	ldr	r3, =LPC_USART_BASE
+	ldr	r2, [r3, #USART_OFFSET_LCR]
+	ldr	r3, =LPC_USART_BASE
+	movs	r1, #128
+	orrs	r2, r1
+	str	r2, [r3, #USART_OFFSET_LCR]
+	ldr	r3, =LPC_USART_BASE
+	ldr	r2, [r7, #12]
+	lsrs	r2, r2, #8
+	str	r2, [r3, #USART_OFFSET_DLM]
+	ldr	r3, =LPC_USART_BASE
+	ldr	r2, [r7, #12]
+	movs	r1, #255
+	ands	r2, r1
+	str	r2, [r3]
+	ldr	r3, =LPC_USART_BASE
+	ldr	r2, [r3, #USART_OFFSET_LCR]
+	ldr	r3, =LPC_USART_BASE
+	movs	r1, #(1<<7)
+	bics	r2, r1
+	str	r2, [r3, #USART_OFFSET_LCR]
+	ldr	r3, =LPC_USART_BASE
+	movs	r2, #UART_LCR_WLEN8
+	str	r2, [r3, #USART_OFFSET_LCR]
+	ldr	r3, =LPC_USART_BASE
+	movs	r2, #(UART_FCR_TX_RS|UART_FCR_RX_RS|UART_FCR_FIFO_EN)	// 7
+	str	r2, [r3, #USART_OFFSET_FCR]
+	nop
+	mov	sp, r7
+	add	sp, sp, #16
+	@ sp needed
+	pop	{r7, pc}
 
 
     .text
@@ -77,14 +117,32 @@ USART_Config_Request:
 	.thumb_func
     .type	USART_putc, %function
 USART_putc:
-	movs r1, #UART_LSR_THRE
-	ldr		r2, =LPC_USART_BASE
-wait_for_transfer:
-	ldr r0, [r2, #USART_OFFSET_LSR]
-	tst r0, r1
-	beq wait_for_transfer
-	str r3, [r2, #USART_OFFSET_THR]
-	bx lr
+	push	{r7, lr}
+	sub	sp, sp, #8
+	add	r7, sp, #0
+	movs	r2, r0
+	adds	r3, r7, #7
+	strb	r2, [r3]
+	nop
+.L5:
+	ldr	r3, =LPC_USART_BASE
+	ldr	r3, [r3, #USART_OFFSET_LSR]
+	movs	r2, #UART_LSR_THRE
+	ands	r3, r2
+	beq	.L5
+	ldr	r3, =LPC_USART_BASE
+	adds	r2, r7, #7
+	ldrb	r2, [r2]
+	str	r2, [r3, #USART_OFFSET_THR]
+	nop
+	mov	sp, r7
+	add	sp, sp, #8
+	@ sp needed
+	pop	{r7, pc}
+.L7:
+	.align	2
+.L6:
+	.word	1073774592
 
      .text
     .global  USART_puts
@@ -113,6 +171,7 @@ check:
 	nop
 	mov	sp, r7
 	add	sp, sp, #8
+	@ sp needed
 	pop	{r7, pc}
 	.size	USART_puts, .-USART_puts
 

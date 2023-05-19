@@ -64,7 +64,7 @@ int main(void) {
     }
     return 0 ;
 }
-
+/*
 void baudrate_config_request(uint32_t baudrate)
 {
 	uint32_t DL;
@@ -74,3 +74,4 @@ void baudrate_config_request(uint32_t baudrate)
     LPC_USART->DLM = DL / 256;
     LPC_USART->DLL = DL % 256;
 }
+*/
